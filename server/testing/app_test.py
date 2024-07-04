@@ -1,6 +1,7 @@
 import json
 from os import environ
 import re
+import pytest  
 
 from flask import request
 
@@ -9,6 +10,11 @@ from models import db, Bakery, BakedGood
 
 class TestApp:
     '''Flask application in flask_app.py'''
+
+    @pytest.fixture(autouse=True)
+    def setup_app_context(self):
+        with app.app_context():
+            yield
 
     def test_creates_baked_goods(self):
         '''can POST new baked goods through "/baked_goods" route.'''
@@ -25,11 +31,14 @@ class TestApp:
                 data={
                     "name": "Apple Fritter",
                     "price": 2,
-                    "bakery_id": 5,
+                    "bakery_id": 1,
                 }
             )
 
             af = BakedGood.query.filter_by(name="Apple Fritter").first()
+            if af:
+                db.session.delete(af)
+                db.session.commit()
 
             assert response.status_code == 201
             assert response.content_type == 'application/json'
@@ -52,9 +61,9 @@ class TestApp:
                 }
             )
 
-            assert(response.status_code == 200)
-            assert(response.content_type == 'application/json')
-            assert(mb.name == "Your Bakery")
+            assert response.status_code == 200
+            assert response.content_type == 'application/json'
+            assert mb.name == "Your Bakery"
 
     def test_deletes_baked_goods(self):
         '''can DELETE baked goods through "baked_goods/<int:id>" route.'''
@@ -66,7 +75,7 @@ class TestApp:
                 af = BakedGood(
                     name="Apple Fritter",
                     price=2,
-                    bakery_id=5,
+                    bakery_id=1,
                 )
                 db.session.add(af)
                 db.session.commit()
@@ -76,6 +85,6 @@ class TestApp:
                 f'/baked_goods/{af.id}'
             )
 
-            assert(response.status_code == 200)
-            assert(response.content_type == 'application/json')
-            assert(not BakedGood.query.filter_by(name="Apple Fritter").first())
+            assert response.status_code == 200
+            assert response.content_type == 'application/json'
+            assert not BakedGood.query.filter_by(name="Apple Fritter").first()
